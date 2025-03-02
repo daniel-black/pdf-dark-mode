@@ -4,233 +4,68 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PDF Dark Mode</title>
-    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script>
       // Initialize PDF.js worker
       pdfjsLib.GlobalWorkerOptions.workerSrc =
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
     </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            animation: {
+              "fade-in": "fadeIn 0.3s ease-in-out",
+            },
+            keyframes: {
+              fadeIn: {
+                "0%": { opacity: "0" },
+                "100%": { opacity: "1" },
+              },
+            },
+          },
+        },
+      };
+    </script>
     <style>
-      /* Custom scrollbar */
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: var(--scrollbar-track);
-      }
-      ::-webkit-scrollbar-thumb {
-        background: var(--scrollbar-thumb);
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: var(--scrollbar-thumb-hover);
-      }
-
-      /* Transitions */
-      .fade-in {
-        animation: fadeIn 0.3s ease-in-out;
-      }
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
-        }
+      /* Always dark mode */
+      html {
+        color-scheme: dark;
       }
 
       /* Canvas container */
       .canvas-container {
-        height: calc(100vh - 88px);
+        height: calc(100vh - 64px);
       }
 
-      /* Dark mode variables */
-      :root {
-        --bg-primary: #f9fafb;
-        --bg-secondary: #f3f4f6;
-        --bg-canvas: #e5e7eb;
-        --text-primary: #111827;
-        --text-secondary: #4b5563;
-        --border-color: #e5e7eb;
-        --accent-color: #3b82f6;
-        --accent-hover: #2563eb;
-        --scrollbar-track: #f1f1f1;
-        --scrollbar-thumb: #c1c1c1;
-        --scrollbar-thumb-hover: #a1a1a1;
-        --error-color: #ef4444;
-      }
-
-      .dark-mode {
-        --bg-primary: #111827;
-        --bg-secondary: #1f2937;
-        --bg-canvas: #111827;
-        --text-primary: #f9fafb;
-        --text-secondary: #9ca3af;
-        --border-color: #374151;
-        --accent-color: #3b82f6;
-        --accent-hover: #60a5fa;
-        --scrollbar-track: #1f2937;
-        --scrollbar-thumb: #4b5563;
-        --scrollbar-thumb-hover: #6b7280;
-        --error-color: #f87171;
-      }
-
-      /* Apply variables */
-      body {
-        background-color: var(--bg-primary);
-        color: var(--text-primary);
-        transition: background-color 0.3s, color 0.3s;
-      }
-
-      .themed-bg-primary {
-        background-color: var(--bg-primary);
-        transition: background-color 0.3s;
-      }
-
-      .themed-bg-secondary {
-        background-color: var(--bg-secondary);
-        transition: background-color 0.3s;
-      }
-
-      .themed-bg-canvas {
-        background-color: var(--bg-canvas);
-        transition: background-color 0.3s;
-      }
-
-      .themed-text-primary {
-        color: var(--text-primary);
-        transition: color 0.3s;
-      }
-
-      .themed-text-secondary {
-        color: var(--text-secondary);
-        transition: color 0.3s;
-      }
-
-      .themed-border {
-        border-color: var(--border-color);
-        transition: border-color 0.3s;
-      }
-
-      /* Tooltip styles */
-      .tooltip {
-        position: relative;
-      }
-
-      .tooltip .tooltip-text {
-        visibility: hidden;
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
-        text-align: center;
-        border-radius: 6px;
-        padding: 5px 8px;
-        position: absolute;
-        z-index: 1;
-        bottom: -125%;
-        left: 50%;
-        transform: translateX(-50%);
-        opacity: 0;
-        transition: opacity 0.3s;
-        white-space: nowrap;
-        font-size: 12px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        pointer-events: none;
-      }
-
-      .tooltip:hover .tooltip-text {
-        visibility: visible;
-        opacity: 1;
-      }
-
-      /* PDF filter for dark mode */
-      .invert-colors {
+      /* Dark mode for PDF canvas */
+      #pdf-canvas {
         filter: invert(1) hue-rotate(180deg);
-      }
-
-      /* Shortcuts overlay */
-      .shortcut-overlay {
-        background-color: rgba(0, 0, 0, 0.8);
-        backdrop-filter: blur(3px);
-      }
-
-      .kb-shortcut {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.25rem;
-        background-color: rgba(255, 255, 255, 0.1);
-        font-family: monospace;
       }
     </style>
   </head>
 
-  <body class="bg-gray-100 h-screen flex flex-col">
+  <body class="bg-gray-900 h-screen flex flex-col">
     <!-- Top Navigation Bar -->
-    <nav
-      id="nav-bar"
-      class="themed-bg-primary shadow-sm z-10 border-b themed-border"
-    >
+    <nav class="bg-gray-800 shadow-sm z-10 border-b border-gray-700">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
-          <!-- Left side: App title and dark mode toggle -->
+          <!-- Left side: App title -->
           <div class="flex items-center">
-            <h1
-              class="hidden sm:block text-xl font-semibold themed-text-primary"
-            >
-              PDF Viewer
+            <h1 class="hidden sm:block text-xl font-semibold text-white">
+              PDF Dark Mode
             </h1>
-
-            <!-- Dark Mode Toggle -->
-            <button
-              id="dark-mode-toggle"
-              class="ml-4 p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none tooltip"
-            >
-              <!-- Sun icon (light mode) -->
-              <svg
-                id="light-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 themed-text-primary"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-              <!-- Moon icon (dark mode) -->
-              <svg
-                id="dark-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 themed-text-primary hidden"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
-              <span class="hidden sm:tooltip-text"
-                >Toggle Dark Mode (Ctrl+D)</span
-              >
-            </button>
 
             <!-- Help button for keyboard shortcuts -->
             <button
               id="help-button"
-              class="hidden sm:block ml-2 p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none tooltip"
+              class="hidden sm:block ml-4 p-1.5 rounded-md hover:bg-gray-700 focus:outline-none relative group"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 themed-text-primary"
+                class="h-5 w-5 text-white"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -242,24 +77,22 @@
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <span class="tooltip-text">Keyboard Shortcuts (?)</span>
+              <span
+                class="invisible group-hover:visible absolute -bottom-full left-1/2 transform -translate-x-1/2 px-2 py-1 text-xs bg-gray-700 text-white rounded whitespace-nowrap"
+                >Keyboard Shortcuts (q)</span
+              >
             </button>
           </div>
 
           <!-- Middle: File info (visible only when file is loaded) -->
           <div id="file-info" class="flex-1 flex items-center justify-center">
             <div class="flex items-center max-w-md truncate px-4">
-              <div class="hidden sm:block text-lg mr-2 themed-text-primary">
-                📄
-              </div>
               <div class="truncate">
                 <p
                   id="current-filename"
-                  class="font-medium themed-text-primary truncate text-xs"
+                  class="font-medium text-white truncate text-xs"
                 ></p>
-                <div
-                  class="text-xs flex items-center text-sm themed-text-secondary"
-                >
+                <div class="text-xs flex items-center text-sm text-gray-400">
                   <span id="file-size"></span>
                   <span class="mx-1">•</span>
                   <span
@@ -277,7 +110,7 @@
             <div id="zoom-controls" class="hidden items-center mr-2">
               <button
                 id="zoom-out"
-                class="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 themed-text-primary focus:outline-none tooltip"
+                class="p-1.5 rounded-md hover:bg-gray-700 text-white focus:outline-none relative group"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -293,14 +126,17 @@
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"
                   />
                 </svg>
-                <span class="tooltip-text">Zoom Out (Ctrl+-)</span>
+                <span
+                  class="invisible group-hover:visible absolute -bottom-full left-1/2 transform -translate-x-1/2 px-2 py-1 text-xs bg-gray-700 text-white rounded whitespace-nowrap"
+                  >Zoom Out (Ctrl+-)</span
+                >
               </button>
-              <span id="zoom-level" class="mx-2 text-sm themed-text-secondary"
+              <span id="zoom-level" class="mx-2 text-sm text-gray-400"
                 >100%</span
               >
               <button
                 id="zoom-in"
-                class="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 themed-text-primary focus:outline-none tooltip"
+                class="p-1.5 rounded-md hover:bg-gray-700 text-white focus:outline-none relative group"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -316,7 +152,10 @@
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
                   />
                 </svg>
-                <span class="hidden sm:tooltip-text">Zoom In (Ctrl++)</span>
+                <span
+                  class="hidden sm:block invisible group-hover:visible absolute -bottom-full left-1/2 transform -translate-x-1/2 px-2 py-1 text-xs bg-gray-700 text-white rounded whitespace-nowrap"
+                  >Zoom In (Ctrl++)</span
+                >
               </button>
             </div>
 
@@ -324,7 +163,7 @@
             <div id="page-controls" class="hidden items-center mr-2">
               <button
                 id="prev-page"
-                class="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 themed-text-primary focus:outline-none tooltip"
+                class="p-1.5 rounded-md hover:bg-gray-700 text-white focus:outline-none relative group"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -340,11 +179,14 @@
                     d="M15 19l-7-7 7-7"
                   />
                 </svg>
-                <span class="hidden sm:tooltip-text">Previous Page (←)</span>
+                <span
+                  class="hidden sm:block invisible group-hover:visible absolute -bottom-full left-1/2 transform -translate-x-1/2 px-2 py-1 text-xs bg-gray-700 text-white rounded whitespace-nowrap"
+                  >Previous Page (←)</span
+                >
               </button>
               <button
                 id="next-page"
-                class="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 themed-text-primary focus:outline-none tooltip"
+                class="p-1.5 rounded-md hover:bg-gray-700 text-white focus:outline-none relative group"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -360,7 +202,10 @@
                     d="M9 5l7 7-7 7"
                   />
                 </svg>
-                <span class="hidden sm:tooltip-text">Next Page (→)</span>
+                <span
+                  class="hidden sm:block invisible group-hover:visible absolute -bottom-full left-1/2 transform -translate-x-1/2 px-2 py-1 text-xs bg-gray-700 text-white rounded whitespace-nowrap"
+                  >Next Page (→)</span
+                >
               </button>
             </div>
 
@@ -375,10 +220,13 @@
               <label
                 for="pdf-upload"
                 id="upload-btn"
-                class="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer tooltip"
+                class="flex items-center px-3 py-1.5 border border-gray-600 rounded-md text-sm font-medium text-gray-200 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer relative group"
               >
                 <span id="upload-label">Upload PDF</span>
-                <span class="hidden sm:tooltip-text">Upload PDF (Ctrl+O)</span>
+                <span
+                  class="hidden sm:block invisible group-hover:visible absolute -bottom-full left-1/2 transform -translate-x-1/2 px-2 py-1 text-xs bg-gray-700 text-white rounded whitespace-nowrap"
+                  >Upload PDF (Ctrl+O)</span
+                >
               </label>
             </div>
           </div>
@@ -391,24 +239,24 @@
       <!-- Upload View -->
       <div
         id="upload-view"
-        class="flex-1 flex items-center justify-center p-6 fade-in"
+        class="flex-1 flex items-center justify-center p-6 animate-fade-in"
       >
         <div class="max-w-lg w-full">
           <div
-            class="border-2 border-dashed themed-border rounded-lg p-8 text-center hover:border-blue-500 transition-colors duration-200 themed-bg-secondary"
+            class="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center hover:border-blue-500 transition-colors duration-300 bg-gray-800"
           >
             <!-- Icon and text container -->
             <div class="flex flex-col items-center justify-center">
               <!-- PDF Icon -->
-              <div class="text-4xl themed-text-primary mb-4">📄</div>
+              <div class="text-4xl text-white mb-4">📄</div>
 
               <!-- Main text -->
-              <p class="text-lg font-semibold themed-text-primary">
+              <p class="text-lg font-semibold text-white">
                 Upload a PDF Document
               </p>
 
               <!-- Subtext -->
-              <p class="text-sm themed-text-secondary mt-2">
+              <p class="text-sm text-gray-400 mt-2">
                 Click the Upload button or press Ctrl+O
               </p>
             </div>
@@ -419,11 +267,9 @@
       <!-- Loading View -->
       <div
         id="loading-view"
-        class="hidden flex-1 flex items-center justify-center fade-in"
+        class="hidden flex-1 flex items-center justify-center animate-fade-in"
       >
-        <div
-          class="max-w-md w-full themed-bg-secondary p-8 rounded-lg shadow-sm"
-        >
+        <div class="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-sm">
           <div class="flex flex-col items-center">
             <div class="mb-4 text-blue-600">
               <svg
@@ -447,13 +293,9 @@
                 ></path>
               </svg>
             </div>
-            <p class="text-lg font-medium themed-text-primary mb-2">
-              Loading your PDF
-            </p>
-            <p class="text-sm themed-text-secondary" id="loading-filename"></p>
-            <div
-              class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-4"
-            >
+            <p class="text-lg font-medium text-white mb-2">Loading your PDF</p>
+            <p class="text-sm text-gray-400" id="loading-filename"></p>
+            <div class="w-full bg-gray-700 rounded-full h-1.5 mt-4">
               <div
                 id="loading-progress"
                 class="bg-blue-600 h-1.5 rounded-full"
@@ -467,7 +309,7 @@
       <!-- PDF Viewer -->
       <div
         id="viewer-view"
-        class="hidden flex-1 themed-bg-canvas overflow-auto fade-in canvas-container flex items-start justify-center"
+        class="hidden flex-1 bg-gray-800 overflow-auto animate-fade-in h-[calc(100vh-64px)] flex items-start justify-center"
       >
         <canvas id="pdf-canvas" class="mt-4 shadow-lg max-w-full"></canvas>
       </div>
@@ -475,19 +317,15 @@
       <!-- Error View -->
       <div
         id="error-view"
-        class="hidden flex-1 flex items-center justify-center p-6 fade-in"
+        class="hidden flex-1 flex items-center justify-center p-6 animate-fade-in"
       >
-        <div
-          class="max-w-md w-full themed-bg-secondary p-8 rounded-lg shadow-sm"
-        >
+        <div class="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-sm">
           <div class="flex flex-col items-center">
-            <div class="text-3xl text-red-500 dark:text-red-400 mb-4">❌</div>
-            <p class="text-lg font-medium themed-text-primary mb-2">
-              Couldn't load PDF
-            </p>
+            <div class="text-3xl text-red-400 mb-4">❌</div>
+            <p class="text-lg font-medium text-white mb-2">Couldn't load PDF</p>
             <p
               id="error-message"
-              class="text-sm themed-text-secondary mb-6 text-center"
+              class="text-sm text-gray-400 mb-6 text-center"
             ></p>
             <button
               id="error-retry-btn"
@@ -503,16 +341,14 @@
     <!-- Keyboard shortcuts overlay -->
     <div
       id="shortcuts-overlay"
-      class="fixed inset-0 shortcut-overlay z-50 hidden flex items-center justify-center"
+      class="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-50 hidden flex items-center justify-center"
     >
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-lg w-full">
+      <div class="bg-gray-800 rounded-lg p-6 max-w-lg w-full">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
-            Keyboard Shortcuts
-          </h2>
+          <h2 class="text-xl font-bold text-white">Keyboard Shortcuts</h2>
           <button
             id="close-shortcuts"
-            class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            class="text-gray-500 hover:text-gray-300"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -532,38 +368,53 @@
         </div>
         <div class="grid grid-cols-2 gap-3 text-sm">
           <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-300">Previous Page</span>
-            <span class="kb-shortcut">←</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-300">Next Page</span>
-            <span class="kb-shortcut">→</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-300">Zoom In</span>
-            <span class="kb-shortcut">Ctrl + +</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-300">Zoom Out</span>
-            <span class="kb-shortcut">Ctrl + -</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-300">Reset Zoom</span>
-            <span class="kb-shortcut">Ctrl + 0</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-300"
-              >Toggle Dark Mode</span
+            <span class="text-gray-300">Previous Page</span>
+            <span
+              class="inline-block px-2 py-1 rounded bg-gray-700 text-white font-mono"
+              >←</span
             >
-            <span class="kb-shortcut">Ctrl + D</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-300">Open File</span>
-            <span class="kb-shortcut">Ctrl + O</span>
+            <span class="text-gray-300">Next Page</span>
+            <span
+              class="inline-block px-2 py-1 rounded bg-gray-700 text-white font-mono"
+              >→</span
+            >
           </div>
           <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-300">Show Shortcuts</span>
-            <span class="kb-shortcut">?</span>
+            <span class="text-gray-300">Zoom In</span>
+            <span
+              class="inline-block px-2 py-1 rounded bg-gray-700 text-white font-mono"
+              >Ctrl + +</span
+            >
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-300">Zoom Out</span>
+            <span
+              class="inline-block px-2 py-1 rounded bg-gray-700 text-white font-mono"
+              >Ctrl + -</span
+            >
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-300">Reset Zoom</span>
+            <span
+              class="inline-block px-2 py-1 rounded bg-gray-700 text-white font-mono"
+              >Ctrl + 0</span
+            >
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-300">Open File</span>
+            <span
+              class="inline-block px-2 py-1 rounded bg-gray-700 text-white font-mono"
+              >Ctrl + O</span
+            >
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-300">Show Shortcuts</span>
+            <span
+              class="inline-block px-2 py-1 rounded bg-gray-700 text-white font-mono"
+              >q</span
+            >
           </div>
         </div>
       </div>

@@ -1,15 +1,11 @@
 // Application state
 const appState = {
-  currentView: "upload-view",
+  currentView: "uploadView",
   file: null,
   pdfDoc: null,
   currentPage: 1,
-  darkMode: true,
-  invertPdfColors: false,
   zoom: 1.0,
 };
-
-console.log("test");
 
 // Elements
 const views = {
@@ -36,9 +32,6 @@ const elements = {
   loadingProgress: document.getElementById("loading-progress"),
   errorMessage: document.getElementById("error-message"),
   errorRetryBtn: document.getElementById("error-retry-btn"),
-  darkModeToggle: document.getElementById("dark-mode-toggle"),
-  lightIcon: document.getElementById("light-icon"),
-  darkIcon: document.getElementById("dark-icon"),
   helpButton: document.getElementById("help-button"),
   closeShortcutsBtn: document.getElementById("close-shortcuts"),
   zoomControls: document.getElementById("zoom-controls"),
@@ -78,27 +71,6 @@ function switchView(viewName) {
     elements.zoomControls.classList.add("hidden");
     elements.zoomControls.classList.remove("flex");
     elements.uploadLabel.textContent = "Upload PDF";
-  }
-}
-
-// ----- Theme Management -----
-function toggleDarkMode() {
-  appState.darkMode = !appState.darkMode;
-
-  if (appState.darkMode) {
-    document.body.classList.add("dark-mode");
-    elements.lightIcon.classList.add("hidden");
-    elements.darkIcon.classList.remove("hidden");
-  } else {
-    document.body.classList.remove("dark-mode");
-    elements.lightIcon.classList.remove("hidden");
-    elements.darkIcon.classList.add("hidden");
-  }
-
-  // Toggle PDF inversion if we're in viewer mode
-  if (appState.currentView === "viewerView") {
-    appState.invertPdfColors = appState.darkMode;
-    renderCurrentPage();
   }
 }
 
@@ -144,9 +116,6 @@ function loadPdf(file) {
           const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
           elements.fileSize.textContent = `${fileSizeMB} MB`;
           elements.totalPagesEl.textContent = pdf.numPages;
-
-          // Initialize inversion based on current mode
-          appState.invertPdfColors = appState.darkMode;
 
           // Switch to viewer view
           switchView("viewerView");
@@ -197,13 +166,6 @@ async function renderPage(pageNumber) {
     };
 
     await page.render(renderContext).promise;
-
-    // Apply inversion if dark mode is active
-    if (appState.invertPdfColors) {
-      elements.pdfCanvas.classList.add("invert-colors");
-    } else {
-      elements.pdfCanvas.classList.remove("invert-colors");
-    }
 
     // Update current page display
     elements.currentPageEl.textContent = pageNumber;
@@ -278,16 +240,18 @@ function updateZoomLevel() {
 
 // Toggle shortcuts overlay
 function toggleShortcutsOverlay() {
-  views.shortcutsOverlay.classList.toggle("hidden");
-  views.shortcutsOverlay.classList.toggle("flex");
+  if (views.shortcutsOverlay.classList.contains("hidden")) {
+    views.shortcutsOverlay.classList.remove("hidden");
+    views.shortcutsOverlay.classList.add("flex");
+  } else {
+    views.shortcutsOverlay.classList.add("hidden");
+    views.shortcutsOverlay.classList.remove("flex");
+  }
 }
 
 // ----- Event Listeners -----
 // File selection
 elements.fileInput.addEventListener("change", handleFileSelect);
-
-// Dark mode toggle
-elements.darkModeToggle.addEventListener("click", toggleDarkMode);
 
 // Navigation buttons
 elements.prevPageBtn.addEventListener("click", () => {
@@ -323,14 +287,8 @@ document.addEventListener("keydown", (e) => {
   }
 
   // Shortcuts that work globally
-  if (e.key === "?" && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+  if (e.key === "q" && !e.ctrlKey && !e.altKey && !e.shiftKey) {
     toggleShortcutsOverlay();
-    return;
-  }
-
-  if (e.ctrlKey && e.key.toLowerCase() === "d") {
-    e.preventDefault(); // Prevent browser's bookmark dialog
-    toggleDarkMode();
     return;
   }
 
@@ -370,11 +328,3 @@ document.addEventListener("keydown", (e) => {
 // Initialize the app
 updateZoomLevel();
 switchView("uploadView");
-
-// Check for saved preference or system preference for dark mode
-if (
-  window.matchMedia &&
-  window.matchMedia("(prefers-color-scheme: dark)").matches
-) {
-  toggleDarkMode();
-}
