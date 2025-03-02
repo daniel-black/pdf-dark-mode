@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF Dark Mode</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script>
+      // Initialize PDF.js worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+    </script>
+    <style>
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--scrollbar-track);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover);
+      }
+
+      /* Transitions */
+      .fade-in {
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      /* Canvas container */
+      .canvas-container {
+        height: calc(100vh - 88px);
+      }
+
+      /* Dark mode variables */
+      :root {
+        --bg-primary: #f9fafb;
+        --bg-secondary: #f3f4f6;
+        --bg-canvas: #e5e7eb;
+        --text-primary: #111827;
+        --text-secondary: #4b5563;
+        --border-color: #e5e7eb;
+        --accent-color: #3b82f6;
+        --accent-hover: #2563eb;
+        --scrollbar-track: #f1f1f1;
+        --scrollbar-thumb: #c1c1c1;
+        --scrollbar-thumb-hover: #a1a1a1;
+        --error-color: #ef4444;
+      }
+
+      .dark-mode {
+        --bg-primary: #111827;
+        --bg-secondary: #1f2937;
+        --bg-canvas: #111827;
+        --text-primary: #f9fafb;
+        --text-secondary: #9ca3af;
+        --border-color: #374151;
+        --accent-color: #3b82f6;
+        --accent-hover: #60a5fa;
+        --scrollbar-track: #1f2937;
+        --scrollbar-thumb: #4b5563;
+        --scrollbar-thumb-hover: #6b7280;
+        --error-color: #f87171;
+      }
+
+      /* Apply variables */
+      body {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        transition: background-color 0.3s, color 0.3s;
+      }
+
+      .themed-bg-primary {
+        background-color: var(--bg-primary);
+        transition: background-color 0.3s;
+      }
+
+      .themed-bg-secondary {
+        background-color: var(--bg-secondary);
+        transition: background-color 0.3s;
+      }
+
+      .themed-bg-canvas {
+        background-color: var(--bg-canvas);
+        transition: background-color 0.3s;
+      }
+
+      .themed-text-primary {
+        color: var(--text-primary);
+        transition: color 0.3s;
+      }
+
+      .themed-text-secondary {
+        color: var(--text-secondary);
+        transition: color 0.3s;
+      }
+
+      .themed-border {
+        border-color: var(--border-color);
+        transition: border-color 0.3s;
+      }
+
+      /* Tooltip styles */
+      .tooltip {
+        position: relative;
+      }
+
+      .tooltip .tooltip-text {
+        visibility: hidden;
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px 8px;
+        position: absolute;
+        z-index: 1;
+        bottom: -125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        white-space: nowrap;
+        font-size: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        pointer-events: none;
+      }
+
+      .tooltip:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      /* PDF filter for dark mode */
+      .invert-colors {
+        filter: invert(1) hue-rotate(180deg);
+      }
+
+      /* Shortcuts overlay */
+      .shortcut-overlay {
+        background-color: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(3px);
+      }
+
+      .kb-shortcut {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        background-color: rgba(255, 255, 255, 0.1);
+        font-family: monospace;
+      }
+    </style>
+  </head>
+
+  <body class="bg-gray-100 h-screen flex flex-col">
+    <!-- Top Navigation Bar -->
+    <nav
+      id="nav-bar"
+      class="themed-bg-primary shadow-sm z-10 border-b themed-border"
+    >
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <!-- Left side: App title and dark mode toggle -->
+          <div class="flex items-center">
+            <h1 class="text-xl font-semibold themed-text-primary">
+              PDF Viewer
+            </h1>
+
+            <!-- Dark Mode Toggle -->
+            <button
+              id="dark-mode-toggle"
+              class="ml-4 p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none tooltip"
+            >
+              <!-- Sun icon (light mode) -->
+              <svg
+                id="light-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 themed-text-primary"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                />
+              </svg>
+              <!-- Moon icon (dark mode) -->
+              <svg
+                id="dark-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 themed-text-primary hidden"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                />
+              </svg>
+              <span class="tooltip-text">Toggle Dark Mode (Ctrl+D)</span>
+            </button>
+
+            <!-- Help button for keyboard shortcuts -->
+            <button
+              id="help-button"
+              class="ml-2 p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none tooltip"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 themed-text-primary"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span class="tooltip-text">Keyboard Shortcuts (?)</span>
+            </button>
+          </div>
+
+          <!-- Middle: File info (visible only when file is loaded) -->
+          <div
+            id="file-info"
+            class="hidden flex-1 flex items-center justify-center"
+          >
+            <div class="flex items-center max-w-md truncate px-4">
+              <div class="text-lg mr-2 themed-text-primary">📄</div>
+              <div class="truncate">
+                <p
+                  id="current-filename"
+                  class="font-medium themed-text-primary truncate"
+                ></p>
+                <div class="flex items-center text-sm themed-text-secondary">
+                  <span id="file-size"></span>
+                  <span class="mx-1">•</span>
+                  <span
+                    >Page <span id="current-page">1</span> of
+                    <span id="total-pages">0</span></span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right side: Controls -->
+          <div class="flex items-center space-x-1">
+            <!-- Zoom controls (visible only when file is loaded) -->
+            <div id="zoom-controls" class="hidden items-center mr-2">
+              <button
+                id="zoom-out"
+                class="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 themed-text-primary focus:outline-none tooltip"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"
+                  />
+                </svg>
+                <span class="tooltip-text">Zoom Out (Ctrl+-)</span>
+              </button>
+              <span id="zoom-level" class="mx-2 text-sm themed-text-secondary"
+                >100%</span
+              >
+              <button
+                id="zoom-in"
+                class="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 themed-text-primary focus:outline-none tooltip"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+                  />
+                </svg>
+                <span class="tooltip-text">Zoom In (Ctrl++)</span>
+              </button>
+            </div>
+
+            <!-- Page navigation (visible only when file is loaded) -->
+            <div id="page-controls" class="hidden items-center mr-2">
+              <button
+                id="prev-page"
+                class="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 themed-text-primary focus:outline-none tooltip"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                <span class="tooltip-text">Previous Page (←)</span>
+              </button>
+              <button
+                id="next-page"
+                class="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 themed-text-primary focus:outline-none tooltip"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+                <span class="tooltip-text">Next Page (→)</span>
+              </button>
+            </div>
+
+            <!-- Upload button -->
+            <div class="flex items-center">
+              <input
+                type="file"
+                id="pdf-upload"
+                class="sr-only"
+                accept="application/pdf"
+              />
+              <label
+                for="pdf-upload"
+                id="upload-btn"
+                class="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer tooltip"
+              >
+                <span id="upload-label">Upload PDF</span>
+                <span class="tooltip-text">Upload PDF (Ctrl+O)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+      <!-- Upload View -->
+      <div
+        id="upload-view"
+        class="flex-1 flex items-center justify-center p-6 fade-in"
+      >
+        <div class="max-w-lg w-full">
+          <div
+            class="border-2 border-dashed themed-border rounded-lg p-8 text-center hover:border-blue-500 transition-colors duration-200 themed-bg-secondary"
+          >
+            <!-- Icon and text container -->
+            <div class="flex flex-col items-center justify-center">
+              <!-- PDF Icon -->
+              <div class="text-4xl themed-text-primary mb-4">📄</div>
+
+              <!-- Main text -->
+              <p class="text-lg font-semibold themed-text-primary">
+                Upload a PDF Document
+              </p>
+
+              <!-- Subtext -->
+              <p class="text-sm themed-text-secondary mt-2">
+                Click the Upload button or press Ctrl+O
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading View -->
+      <div
+        id="loading-view"
+        class="hidden flex-1 flex items-center justify-center fade-in"
+      >
+        <div
+          class="max-w-md w-full themed-bg-secondary p-8 rounded-lg shadow-sm"
+        >
+          <div class="flex flex-col items-center">
+            <div class="mb-4 text-blue-600">
+              <svg
+                class="animate-spin h-10 w-10"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            </div>
+            <p class="text-lg font-medium themed-text-primary mb-2">
+              Loading your PDF
+            </p>
+            <p class="text-sm themed-text-secondary" id="loading-filename"></p>
+            <div
+              class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-4"
+            >
+              <div
+                id="loading-progress"
+                class="bg-blue-600 h-1.5 rounded-full"
+                style="width: 0%"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PDF Viewer -->
+      <div
+        id="viewer-view"
+        class="hidden flex-1 themed-bg-canvas overflow-auto fade-in canvas-container flex items-start justify-center"
+      >
+        <canvas id="pdf-canvas" class="mt-4 shadow-lg max-w-full"></canvas>
+      </div>
+
+      <!-- Error View -->
+      <div
+        id="error-view"
+        class="hidden flex-1 flex items-center justify-center p-6 fade-in"
+      >
+        <div
+          class="max-w-md w-full themed-bg-secondary p-8 rounded-lg shadow-sm"
+        >
+          <div class="flex flex-col items-center">
+            <div class="text-3xl text-red-500 dark:text-red-400 mb-4">❌</div>
+            <p class="text-lg font-medium themed-text-primary mb-2">
+              Couldn't load PDF
+            </p>
+            <p
+              id="error-message"
+              class="text-sm themed-text-secondary mb-6 text-center"
+            ></p>
+            <button
+              id="error-retry-btn"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Keyboard shortcuts overlay -->
+    <div
+      id="shortcuts-overlay"
+      class="fixed inset-0 shortcut-overlay z-50 hidden flex items-center justify-center"
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-lg w-full">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+            Keyboard Shortcuts
+          </h2>
+          <button
+            id="close-shortcuts"
+            class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600 dark:text-gray-300">Previous Page</span>
+            <span class="kb-shortcut">←</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600 dark:text-gray-300">Next Page</span>
+            <span class="kb-shortcut">→</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600 dark:text-gray-300">Zoom In</span>
+            <span class="kb-shortcut">Ctrl + +</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600 dark:text-gray-300">Zoom Out</span>
+            <span class="kb-shortcut">Ctrl + -</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600 dark:text-gray-300">Reset Zoom</span>
+            <span class="kb-shortcut">Ctrl + 0</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600 dark:text-gray-300"
+              >Toggle Dark Mode</span
+            >
+            <span class="kb-shortcut">Ctrl + D</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600 dark:text-gray-300">Open File</span>
+            <span class="kb-shortcut">Ctrl + O</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600 dark:text-gray-300">Show Shortcuts</span>
+            <span class="kb-shortcut">?</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Application state
+      const appState = {
+        currentView: "upload-view",
+        file: null,
+        pdfDoc: null,
+        currentPage: 1,
+        darkMode: false,
+        invertPdfColors: false,
+        zoom: 1.0,
+      };
+
+      // Elements
+      const views = {
+        uploadView: document.getElementById("upload-view"),
+        loadingView: document.getElementById("loading-view"),
+        viewerView: document.getElementById("viewer-view"),
+        errorView: document.getElementById("error-view"),
+        shortcutsOverlay: document.getElementById("shortcuts-overlay"),
+      };
+
+      const elements = {
+        fileInput: document.getElementById("pdf-upload"),
+        uploadLabel: document.getElementById("upload-label"),
+        fileInfo: document.getElementById("file-info"),
+        currentFilename: document.getElementById("current-filename"),
+        fileSize: document.getElementById("file-size"),
+        pageControls: document.getElementById("page-controls"),
+        prevPageBtn: document.getElementById("prev-page"),
+        nextPageBtn: document.getElementById("next-page"),
+        currentPageEl: document.getElementById("current-page"),
+        totalPagesEl: document.getElementById("total-pages"),
+        pdfCanvas: document.getElementById("pdf-canvas"),
+        loadingFilename: document.getElementById("loading-filename"),
+        loadingProgress: document.getElementById("loading-progress"),
+        errorMessage: document.getElementById("error-message"),
+        errorRetryBtn: document.getElementById("error-retry-btn"),
+        darkModeToggle: document.getElementById("dark-mode-toggle"),
+        lightIcon: document.getElementById("light-icon"),
+        darkIcon: document.getElementById("dark-icon"),
+        helpButton: document.getElementById("help-button"),
+        closeShortcutsBtn: document.getElementById("close-shortcuts"),
+        zoomControls: document.getElementById("zoom-controls"),
+        zoomInBtn: document.getElementById("zoom-in"),
+        zoomOutBtn: document.getElementById("zoom-out"),
+        zoomLevelEl: document.getElementById("zoom-level"),
+      };
+
+      // Create a PDF rendering context
+      const pdfContext = elements.pdfCanvas.getContext("2d");
+
+      // ----- View Management Functions -----
+      function switchView(viewName) {
+        // Hide all views except shortcuts overlay
+        Object.entries(views).forEach(([key, view]) => {
+          if (key !== "shortcutsOverlay") {
+            view.classList.add("hidden");
+          }
+        });
+
+        // Show the requested view
+        views[viewName].classList.remove("hidden");
+        appState.currentView = viewName;
+
+        // Update UI elements based on view
+        if (viewName === "viewerView") {
+          elements.fileInfo.classList.remove("hidden");
+          elements.pageControls.classList.remove("hidden");
+          elements.pageControls.classList.add("flex");
+          elements.zoomControls.classList.remove("hidden");
+          elements.zoomControls.classList.add("flex");
+          elements.uploadLabel.textContent = "Change PDF";
+        } else {
+          elements.fileInfo.classList.add("hidden");
+          elements.pageControls.classList.add("hidden");
+          elements.pageControls.classList.remove("flex");
+          elements.zoomControls.classList.add("hidden");
+          elements.zoomControls.classList.remove("flex");
+          elements.uploadLabel.textContent = "Upload PDF";
+        }
+      }
+
+      // ----- Theme Management -----
+      function toggleDarkMode() {
+        appState.darkMode = !appState.darkMode;
+
+        if (appState.darkMode) {
+          document.body.classList.add("dark-mode");
+          elements.lightIcon.classList.add("hidden");
+          elements.darkIcon.classList.remove("hidden");
+        } else {
+          document.body.classList.remove("dark-mode");
+          elements.lightIcon.classList.remove("hidden");
+          elements.darkIcon.classList.add("hidden");
+        }
+
+        // Toggle PDF inversion if we're in viewer mode
+        if (appState.currentView === "viewerView") {
+          appState.invertPdfColors = appState.darkMode;
+          renderCurrentPage();
+        }
+      }
+
+      // ----- PDF Handling Functions -----
+      function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file && file.type === "application/pdf") {
+          appState.file = file;
+
+          // Switch to loading view
+          switchView("loadingView");
+          elements.loadingFilename.textContent = file.name;
+
+          // Start loading the PDF
+          loadPdf(file);
+        }
+      }
+
+      function loadPdf(file) {
+        const fileReader = new FileReader();
+
+        // Setup progress tracking
+        fileReader.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentLoaded = Math.round(
+              (event.loaded / event.total) * 100
+            );
+            elements.loadingProgress.style.width = percentLoaded + "%";
+          }
+        };
+
+        fileReader.onload = async (event) => {
+          try {
+            // Load the PDF document
+            const typedArray = new Uint8Array(event.target.result);
+            const loadingTask = pdfjsLib.getDocument(typedArray);
+
+            loadingTask.promise
+              .then((pdf) => {
+                appState.pdfDoc = pdf;
+                appState.currentPage = 1;
+
+                // Update viewer information
+                elements.currentFilename.textContent = file.name;
+                const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+                elements.fileSize.textContent = `${fileSizeMB} MB`;
+                elements.totalPagesEl.textContent = pdf.numPages;
+
+                // Initialize inversion based on current mode
+                appState.invertPdfColors = appState.darkMode;
+
+                // Switch to viewer view
+                switchView("viewerView");
+
+                // Render the first page
+                renderPage(1);
+              })
+              .catch((error) => {
+                showError("Failed to load PDF: " + error.message);
+              });
+          } catch (error) {
+            showError("Error processing the file: " + error.message);
+          }
+        };
+
+        fileReader.onerror = () => {
+          showError("Error reading the file. Please try again.");
+        };
+
+        // Start reading the file
+        fileReader.readAsArrayBuffer(file);
+      }
+
+      async function renderPage(pageNumber) {
+        if (!appState.pdfDoc) return;
+
+        try {
+          // Get the page
+          const page = await appState.pdfDoc.getPage(pageNumber);
+
+          // Adjust canvas dimensions for the page
+          const viewport = page.getViewport({ scale: appState.zoom });
+          elements.pdfCanvas.height = viewport.height;
+          elements.pdfCanvas.width = viewport.width;
+
+          // Clear canvas before rendering
+          pdfContext.clearRect(
+            0,
+            0,
+            elements.pdfCanvas.width,
+            elements.pdfCanvas.height
+          );
+
+          // Render the page
+          const renderContext = {
+            canvasContext: pdfContext,
+            viewport: viewport,
+          };
+
+          await page.render(renderContext).promise;
+
+          // Apply inversion if dark mode is active
+          if (appState.invertPdfColors) {
+            elements.pdfCanvas.classList.add("invert-colors");
+          } else {
+            elements.pdfCanvas.classList.remove("invert-colors");
+          }
+
+          // Update current page display
+          elements.currentPageEl.textContent = pageNumber;
+          appState.currentPage = pageNumber;
+
+          // Update button states
+          updateButtonStates();
+        } catch (error) {
+          showError("Error rendering page: " + error.message);
+        }
+      }
+
+      function renderCurrentPage() {
+        renderPage(appState.currentPage);
+      }
+
+      function updateButtonStates() {
+        // Disable prev button on first page
+        if (appState.currentPage <= 1) {
+          elements.prevPageBtn.classList.add(
+            "opacity-50",
+            "cursor-not-allowed"
+          );
+          elements.prevPageBtn.disabled = true;
+        } else {
+          elements.prevPageBtn.classList.remove(
+            "opacity-50",
+            "cursor-not-allowed"
+          );
+          elements.prevPageBtn.disabled = false;
+        }
+
+        // Disable next button on last page
+        if (
+          appState.pdfDoc &&
+          appState.currentPage >= appState.pdfDoc.numPages
+        ) {
+          elements.nextPageBtn.classList.add(
+            "opacity-50",
+            "cursor-not-allowed"
+          );
+          elements.nextPageBtn.disabled = true;
+        } else {
+          elements.nextPageBtn.classList.remove(
+            "opacity-50",
+            "cursor-not-allowed"
+          );
+          elements.nextPageBtn.disabled = false;
+        }
+      }
+
+      function showError(message) {
+        elements.errorMessage.textContent = message;
+        switchView("errorView");
+      }
+
+      // ----- Zoom Functions -----
+      function zoomIn() {
+        if (appState.zoom < 3.0) {
+          // Max zoom limit
+          appState.zoom += 0.1;
+          updateZoomLevel();
+          renderCurrentPage();
+        }
+      }
+
+      function zoomOut() {
+        if (appState.zoom > 0.5) {
+          // Min zoom limit
+          appState.zoom -= 0.1;
+          updateZoomLevel();
+          renderCurrentPage();
+        }
+      }
+
+      function resetZoom() {
+        appState.zoom = 1.0;
+        updateZoomLevel();
+        renderCurrentPage();
+      }
+
+      function updateZoomLevel() {
+        // Update zoom display with percentage
+        const zoomPercent = Math.round(appState.zoom * 100);
+        elements.zoomLevelEl.textContent = `${zoomPercent}%`;
+      }
+
+      // Toggle shortcuts overlay
+      function toggleShortcutsOverlay() {
+        views.shortcutsOverlay.classList.toggle("hidden");
+        views.shortcutsOverlay.classList.toggle("flex");
+      }
+
+      // ----- Event Listeners -----
+      // File selection
+      elements.fileInput.addEventListener("change", handleFileSelect);
+
+      // Dark mode toggle
+      elements.darkModeToggle.addEventListener("click", toggleDarkMode);
+
+      // Navigation buttons
+      elements.prevPageBtn.addEventListener("click", () => {
+        if (appState.currentPage > 1) {
+          renderPage(appState.currentPage - 1);
+        }
+      });
+
+      elements.nextPageBtn.addEventListener("click", () => {
+        if (
+          appState.pdfDoc &&
+          appState.currentPage < appState.pdfDoc.numPages
+        ) {
+          renderPage(appState.currentPage + 1);
+        }
+      });
+
+      // Zoom controls
+      elements.zoomInBtn.addEventListener("click", zoomIn);
+      elements.zoomOutBtn.addEventListener("click", zoomOut);
+
+      // Help button
+      elements.helpButton.addEventListener("click", toggleShortcutsOverlay);
+      elements.closeShortcutsBtn.addEventListener(
+        "click",
+        toggleShortcutsOverlay
+      );
+
+      // Error retry button
+      elements.errorRetryBtn.addEventListener("click", () => {
+        switchView("uploadView");
+      });
+
+      // ----- Keyboard Shortcuts -----
+      document.addEventListener("keydown", (e) => {
+        // Don't process shortcuts when user is typing in an input field
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+          return;
+        }
+
+        // Shortcuts that work globally
+        if (e.key === "?" && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+          toggleShortcutsOverlay();
+          return;
+        }
+
+        if (e.ctrlKey && e.key.toLowerCase() === "d") {
+          e.preventDefault(); // Prevent browser's bookmark dialog
+          toggleDarkMode();
+          return;
+        }
+
+        if (e.ctrlKey && e.key.toLowerCase() === "o") {
+          e.preventDefault(); // Prevent browser's open dialog
+          elements.fileInput.click();
+          return;
+        }
+
+        // Shortcuts that only work in viewer mode
+        if (appState.currentView === "viewerView") {
+          // Page navigation
+          if (e.key === "ArrowLeft" && appState.currentPage > 1) {
+            renderPage(appState.currentPage - 1);
+          } else if (
+            e.key === "ArrowRight" &&
+            appState.pdfDoc &&
+            appState.currentPage < appState.pdfDoc.numPages
+          ) {
+            renderPage(appState.currentPage + 1);
+          }
+
+          // Zoom controls
+          if (e.ctrlKey && (e.key === "+" || e.key === "=")) {
+            e.preventDefault(); // Prevent browser zoom
+            zoomIn();
+          } else if (e.ctrlKey && e.key === "-") {
+            e.preventDefault(); // Prevent browser zoom
+            zoomOut();
+          } else if (e.ctrlKey && e.key === "0") {
+            e.preventDefault(); // Prevent browser zoom reset
+            resetZoom();
+          }
+        }
+      });
+
+      // Initialize the app
+      updateZoomLevel();
+      switchView("uploadView");
+
+      // Check for saved preference or system preference for dark mode
+      if (
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+      ) {
+        toggleDarkMode();
+      }
+    </script>
+  </body>
+</html>
