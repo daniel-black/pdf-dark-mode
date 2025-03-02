@@ -3,7 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PDF Dark Mode</title>
+    <title>PDF Dark</title>
+    <meta
+      name="description"
+      content="A simple PDF viewer with built-in dark mode for comfortable reading in low-light environments."
+    />
+    <meta
+      name="keywords"
+      content="pdf viewer, dark mode pdf, night mode pdf, pdf reader, web pdf viewer"
+    />
+    <meta name="author" content="Daniel Black" />
+    <link rel="canonical" href="https://pdfdark.com" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script>
       // Initialize PDF.js worker
@@ -28,6 +38,42 @@
           },
         },
       };
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "PDF Dark",
+        "description": "A simple PDF viewer with built-in dark mode for comfortable reading in low-light environments.",
+        "applicationCategory": "UtilityApplication",
+        "operatingSystem": "Any",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "featureList": [
+          "Dark mode for comfortable night reading",
+          "Simple and intuitive interface",
+          "PDF navigation controls",
+          "Zoom functionality",
+          "Keyboard shortcuts"
+        ]
+      }
+    </script>
+    <!-- Google tag (gtag.js) -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-7XJCQ0VBBP"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-7XJCQ0VBBP");
     </script>
     <style>
       /* Always dark mode */
@@ -55,7 +101,7 @@
           <!-- Left side: App title -->
           <div class="flex items-center">
             <h1 class="hidden sm:block text-xl font-semibold text-white">
-              PDF Dark Mode
+              PDF Dark
             </h1>
 
             <!-- Help button for keyboard shortcuts -->
@@ -416,6 +462,16 @@
               >q</span
             >
           </div>
+        </div>
+
+        <div class="text-center mt-8 text-sm text-gray-300">
+          Created by
+          <a
+            href="https://danblack.co"
+            class="underline underline-offset-4"
+            target="_blank"
+            >Daniel Black</a
+          >
         </div>
       </div>
     </div>
